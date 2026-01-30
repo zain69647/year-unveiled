@@ -230,7 +230,7 @@ const YearProgress = () => {
         
         {/* Motivational quote */}
         <div className="text-center pt-2">
-          <p className="text-base sm:text-lg text-accent-foreground/90 italic font-light leading-relaxed">
+          <p className="text-base sm:text-lg text-foreground/90 italic font-light leading-relaxed">
             "{quote}"
           </p>
         </div>
