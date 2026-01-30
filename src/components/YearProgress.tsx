@@ -7,6 +7,8 @@ interface TimeData {
   year: number;
   formattedDate: string;
   dayOfYear: number;
+  nextMilestone: { target: number; days: number; hours: number; minutes: number; seconds: number };
+  nextMonth: { name: string; days: number; hours: number; minutes: number; seconds: number };
 }
 
 interface Particle {
@@ -97,6 +99,9 @@ const getQuoteForProgress = (percentage: number, dayOfYear: number): string => {
   return quotes[quoteIndex];
 };
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
 const calculateYearProgress = (): TimeData => {
   const now = new Date();
   const pakistanTime = new Date(now.toLocaleString('en-US', { timeZone: PAKISTAN_TIMEZONE }));
@@ -112,6 +117,20 @@ const calculateYearProgress = (): TimeData => {
   // Calculate day of year
   const dayOfYear = Math.floor(elapsedMillis / (1000 * 60 * 60 * 24)) + 1;
   
+  // Calculate next 5% milestone
+  const nextMilestonePercent = Math.ceil(percentage / 5) * 5;
+  const targetMilestone = nextMilestonePercent > 100 ? 100 : nextMilestonePercent;
+  const millisToMilestone = (targetMilestone / 100) * totalMillisInYear - elapsedMillis;
+  const milestoneCountdown = formatCountdown(millisToMilestone);
+  
+  // Calculate next month
+  const currentMonth = pakistanTime.getMonth();
+  const nextMonthIndex = currentMonth === 11 ? 0 : currentMonth + 1;
+  const nextMonthYear = currentMonth === 11 ? year + 1 : year;
+  const nextMonthStart = new Date(nextMonthYear, nextMonthIndex, 1, 0, 0, 0, 0);
+  const millisToNextMonth = nextMonthStart.getTime() - pakistanTime.getTime();
+  const monthCountdown = formatCountdown(millisToNextMonth);
+  
   const formattedDate = pakistanTime.toLocaleString('en-US', {
     timeZone: PAKISTAN_TIMEZONE,
     month: 'long',
@@ -125,8 +144,19 @@ const calculateYearProgress = (): TimeData => {
     percentage: Math.round(percentage * 100) / 100,
     year,
     formattedDate,
-    dayOfYear
+    dayOfYear,
+    nextMilestone: { target: targetMilestone, ...milestoneCountdown },
+    nextMonth: { name: MONTH_NAMES[nextMonthIndex], ...monthCountdown }
   };
+};
+
+const formatCountdown = (millis: number) => {
+  const totalSeconds = Math.max(0, Math.floor(millis / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { days, hours, minutes, seconds };
 };
 
 const Sparkle = ({ particle }: { particle: Particle }) => (
@@ -203,6 +233,39 @@ const YearProgress = () => {
           <p className="text-base sm:text-lg text-accent-foreground/90 italic font-light leading-relaxed">
             "{quote}"
           </p>
+        </div>
+        
+        {/* Countdown timers */}
+        <div className="grid grid-cols-2 gap-4 pt-4">
+          {/* Next 5% milestone */}
+          <div className="countdown-card">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+              Next {timeData.nextMilestone.target}%
+            </p>
+            <div className="countdown-time">
+              {timeData.nextMilestone.days > 0 && (
+                <span>{timeData.nextMilestone.days}<span className="countdown-unit">d</span> </span>
+              )}
+              <span>{String(timeData.nextMilestone.hours).padStart(2, '0')}<span className="countdown-unit">h</span> </span>
+              <span>{String(timeData.nextMilestone.minutes).padStart(2, '0')}<span className="countdown-unit">m</span> </span>
+              <span>{String(timeData.nextMilestone.seconds).padStart(2, '0')}<span className="countdown-unit">s</span></span>
+            </div>
+          </div>
+          
+          {/* Next month */}
+          <div className="countdown-card">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+              {timeData.nextMonth.name}
+            </p>
+            <div className="countdown-time">
+              {timeData.nextMonth.days > 0 && (
+                <span>{timeData.nextMonth.days}<span className="countdown-unit">d</span> </span>
+              )}
+              <span>{String(timeData.nextMonth.hours).padStart(2, '0')}<span className="countdown-unit">h</span> </span>
+              <span>{String(timeData.nextMonth.minutes).padStart(2, '0')}<span className="countdown-unit">m</span> </span>
+              <span>{String(timeData.nextMonth.seconds).padStart(2, '0')}<span className="countdown-unit">s</span></span>
+            </div>
+          </div>
         </div>
         
         {/* Current date and time */}
