@@ -61,6 +61,39 @@
 }
 
 @layer components {
+  .progress-bar-wrapper {
+    @apply relative py-6;
+  }
+
+  .particles-container {
+    @apply absolute inset-0 overflow-hidden pointer-events-none;
+  }
+
+  .sparkle {
+    @apply absolute opacity-0;
+    animation: sparkle-float ease-in-out infinite;
+  }
+
+  @keyframes sparkle-float {
+    0%, 100% {
+      opacity: 0;
+      transform: translateY(100%) scale(0);
+    }
+    10% {
+      opacity: 0.8;
+      transform: translateY(80%) scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: translateY(0%) scale(1.2);
+      box-shadow: 0 0 8px hsl(var(--progress-glow) / 0.8);
+    }
+    90% {
+      opacity: 0.6;
+      transform: translateY(-80%) scale(0.8);
+    }
+  }
+
   .progress-bar-container {
     @apply relative w-full h-3 rounded-full overflow-hidden;
     background: hsl(var(--muted));
