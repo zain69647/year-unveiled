@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
 
@@ -6,6 +6,14 @@ interface TimeData {
   percentage: number;
   year: number;
   formattedDate: string;
+}
+
+interface Particle {
+  id: number;
+  left: number;
+  delay: number;
+  duration: number;
+  size: number;
 }
 
 const calculateYearProgress = (): TimeData => {
@@ -47,8 +55,32 @@ const calculateYearProgress = (): TimeData => {
   };
 };
 
+const Sparkle = ({ particle }: { particle: Particle }) => (
+  <div
+    className="sparkle absolute rounded-full bg-primary"
+    style={{
+      left: `${particle.left}%`,
+      width: `${particle.size}px`,
+      height: `${particle.size}px`,
+      animationDelay: `${particle.delay}s`,
+      animationDuration: `${particle.duration}s`,
+    }}
+  />
+);
+
 const YearProgress = () => {
   const [timeData, setTimeData] = useState<TimeData>(calculateYearProgress);
+  
+  // Generate particles only once
+  const particles = useMemo<Particle[]>(() => 
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 3,
+      duration: 2 + Math.random() * 2,
+      size: 2 + Math.random() * 3,
+    })), []
+  );
   
   useEffect(() => {
     // Update every second
@@ -72,13 +104,23 @@ const YearProgress = () => {
           </p>
         </div>
         
-        {/* Progress bar */}
+        {/* Progress bar with particles */}
         <div className="w-full pt-4">
-          <div className="progress-bar-container">
-            <div 
-              className="progress-bar-fill"
-              style={{ width: `${timeData.percentage}%` }}
-            />
+          <div className="progress-bar-wrapper">
+            {/* Sparkle particles */}
+            <div className="particles-container">
+              {particles.map((particle) => (
+                <Sparkle key={particle.id} particle={particle} />
+              ))}
+            </div>
+            
+            {/* Progress bar */}
+            <div className="progress-bar-container">
+              <div 
+                className="progress-bar-fill"
+                style={{ width: `${timeData.percentage}%` }}
+              />
+            </div>
           </div>
         </div>
         
