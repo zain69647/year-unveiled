@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
+import { Share2, Download, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
 
@@ -174,6 +177,9 @@ const Sparkle = ({ particle }: { particle: Particle }) => (
 
 const YearProgress = () => {
   const [timeData, setTimeData] = useState<TimeData>(calculateYearProgress);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   
   const particles = useMemo<Particle[]>(() => 
     Array.from({ length: 12 }, (_, i) => ({
@@ -197,10 +203,70 @@ const YearProgress = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  const captureImage = useCallback(async (): Promise<Blob | null> => {
+    if (!contentRef.current) return null;
+    
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        backgroundColor: '#000000',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      });
+      
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
+      });
+    } catch (error) {
+      console.error('Failed to capture image:', error);
+      return null;
+    }
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    setIsSharing(true);
+    
+    try {
+      const blob = await captureImage();
+      if (!blob) throw new Error('Failed to capture image');
+      
+      const file = new File([blob], `year-progress-${timeData.year}.png`, { type: 'image/png' });
+      
+      // Try native share API first
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `${timeData.percentage.toFixed(2)}% of ${timeData.year}`,
+          text: `${timeData.percentage.toFixed(2)}% of ${timeData.year} has passed. "${quote}"`,
+          files: [file],
+        });
+        setShareSuccess(true);
+      } else {
+        // Fallback to download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `year-progress-${timeData.year}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setShareSuccess(true);
+      }
+      
+      setTimeout(() => setShareSuccess(false), 2000);
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Share failed:', error);
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  }, [captureImage, timeData.year, timeData.percentage, quote]);
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md space-y-8">
+      <div ref={contentRef} className="w-full max-w-md space-y-8 p-6 rounded-xl" style={{ backgroundColor: '#000' }}>
         {/* Main percentage display */}
         <div className="text-center space-y-2">
           <h1 className="percentage-text text-5xl sm:text-6xl text-foreground glow-text animate-pulse-subtle">
@@ -276,6 +342,33 @@ const YearProgress = () => {
           <p className="text-xs text-muted-foreground/60 mt-1">
             Pakistan Standard Time
           </p>
+        </div>
+        
+        {/* Share button */}
+        <div className="flex justify-center pt-6">
+          <Button
+            onClick={handleShare}
+            disabled={isSharing}
+            variant="outline"
+            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/10 transition-all duration-300"
+          >
+            {shareSuccess ? (
+              <>
+                <Check className="h-4 w-4 text-primary" />
+                <span className="text-primary">Saved!</span>
+              </>
+            ) : isSharing ? (
+              <>
+                <Download className="h-4 w-4 animate-pulse" />
+                <span>Capturing...</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4" />
+                <span>Share Progress</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </div>
